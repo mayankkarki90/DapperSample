@@ -12,6 +12,6 @@ namespace DataContracts.Contracts
 
         Task UpdateAsync(Employee employee);
 
-        Task DeleteAsync(string code);
+        Task DeleteAsync(int id);
     }
 }

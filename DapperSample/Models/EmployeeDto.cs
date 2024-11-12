@@ -1,6 +1,6 @@
 ﻿namespace DapperSample.Models
 {
-    public class EmployeeResponse
+    public class EmployeeDto
     {
         public string FirstName { get; set; }
 
