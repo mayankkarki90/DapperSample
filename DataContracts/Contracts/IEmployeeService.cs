@@ -4,7 +4,7 @@ namespace DataContracts.Contracts
 {
     public interface IEmployeeService
     {
-        Task<List<Employee>> GetAllAsync();
+        Task<IEnumerable<Employee>> GetAllAsync();
 
         Task<Employee> GetByCodeAsync(string code);
 

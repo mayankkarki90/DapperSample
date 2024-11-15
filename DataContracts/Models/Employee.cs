@@ -2,7 +2,7 @@
 {
     public class Employee
     {
-        public int ID { get; set; }
+        public int Id { get; set; }
 
         public string FirstName { get; set; }
 
@@ -11,5 +11,9 @@
         public string Code { get; set; }
 
         public DateTime DateOfBirth { get; set; }
+
+        public EmployeeDetails? Details { get; set; }
+
+        public List<Project> Projects { get; set; }
     }
 }

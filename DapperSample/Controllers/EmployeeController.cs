@@ -56,7 +56,7 @@ namespace DapperSample.Controllers
                 return NotFound("Employee not found");
 
             var employeeDb = _mapper.Map<Employee>(employee);
-            employeeDb.ID = existingEmployee.ID;
+            employeeDb.Id = existingEmployee.Id;
             await _employeeService.UpdateAsync(employeeDb);
 
             return NoContent();
@@ -69,7 +69,7 @@ namespace DapperSample.Controllers
             if (existingEmployee == null)
                 return NotFound("Employee not found");
 
-            await _employeeService.DeleteAsync(existingEmployee.ID);
+            await _employeeService.DeleteAsync(existingEmployee.Id);
             return NoContent();
         }
     }

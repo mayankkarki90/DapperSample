@@ -8,6 +8,10 @@ namespace DapperSample
     {
         public AutoMapperProfile()
         {
+            CreateMap<Designation, DesignationDto>().ReverseMap();
+            CreateMap<Department, DepartmentDto>().ReverseMap();
+            CreateMap<Project, ProjectDto>().ReverseMap();
+            CreateMap<EmployeeDetails, EmployeeDetailsDto>().ReverseMap();
             CreateMap<Employee, EmployeeDto>().ReverseMap();
         }
     }

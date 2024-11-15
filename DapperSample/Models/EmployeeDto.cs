@@ -9,5 +9,9 @@
         public string Code { get; set; }
 
         public DateTime DateOfBirth { get; set; }
+
+        public EmployeeDetailsDto? Details { get; set; }
+
+        public ProjectDto[] Projects { get; set; }
     }
 }
