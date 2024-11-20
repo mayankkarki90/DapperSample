@@ -17,47 +17,16 @@ namespace DataServices.Services
 
         public async Task<IEnumerable<Employee>> GetAllAsync()
         {
-            var sql = @"SELECT E.*, ED.*, D.*, DSG.*, P.*
-                        FROM Employee E
-                        LEFT JOIN EmployeeDetails ED ON E.Id = ED.EmployeeId
-                        LEFT JOIN Department D ON D.Id = ED.DepartmentId
-                        LEFT JOIN Designation DSG ON DSG.Id = ED.DesignationId
-                        LEFT JOIN EmployeeProjects EP ON E.Id = EP.EmployeeId
-                        LEFT JOIN Project P ON P.Id = EP.ProjectId";
-            var employeeDictionary = new Dictionary<int, Employee>();
-
-            using var connection = GetConnection();
-            var employees = await connection.QueryAsync<Employee, EmployeeDetails, Department, Designation, Project, Employee>(
-                sql,
-                (employee, employeeDetails, department, designation, project) =>
-                {
-                    if (!employeeDictionary.TryGetValue(employee.Id, out var currentEmployee))
-                    {
-                        currentEmployee = employee;
-                        employeeDetails.Designation = designation;
-                        employeeDetails.Department = department;
-                        currentEmployee.Details = employeeDetails;
-                        currentEmployee.Projects = new List<Project>();
-                        employeeDictionary.Add(currentEmployee.Id, currentEmployee);
-                    }
-
-                    if (project != null && currentEmployee.Projects.All(p => p.Id != project.Id))
-                    {
-                        currentEmployee.Projects.Add(project);
-                    }
-
-                    return currentEmployee;
-                }, splitOn: "EmployeeId, Id, Id, Id");
-
-            return employeeDictionary.Values;
+            var sql = GetEmployeesSql(false);
+            var employees = await QueryEmployeesAsync(sql);
+            return employees;
         }
 
         public async Task<Employee> GetByCodeAsync(string code)
         {
-            using var connection = GetConnection();
-            var employee = await connection.QueryFirstOrDefaultAsync<Employee>("Select * from Employee where Code=@Code",
-                        new { Code = code });
-            return employee;
+            var sql = GetEmployeesSql(true);
+            var employees = await QueryEmployeesAsync(sql, new { Code = code });
+            return employees.FirstOrDefault();
         }
 
         public async Task AddAsync(Employee employee)
@@ -84,6 +53,52 @@ namespace DataServices.Services
         private SqlConnection GetConnection()
         {
             return new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+        }
+
+        private string GetEmployeesSql(bool getByCode)
+        {
+            var sql = @"SELECT E.*, ED.*, D.*, DSG.*, P.*
+                        FROM Employee E
+                        LEFT JOIN EmployeeDetails ED ON E.Id = ED.EmployeeId
+                        LEFT JOIN Department D ON D.Id = ED.DepartmentId
+                        LEFT JOIN Designation DSG ON DSG.Id = ED.DesignationId
+                        LEFT JOIN EmployeeProjects EP ON E.Id = EP.EmployeeId
+                        LEFT JOIN Project P ON P.Id = EP.ProjectId";
+
+            if (getByCode)
+                sql += " WHERE E.Code = @Code";
+
+            return sql;
+        }
+
+        private async Task<IEnumerable<Employee>> QueryEmployeesAsync(string sql, object? parameter = null)
+        {
+            var employeeDictionary = new Dictionary<int, Employee>();
+
+            using var connection = GetConnection();
+            var employees = await connection.QueryAsync<Employee, EmployeeDetails, Department, Designation, Project, Employee>(
+                sql,
+                (employee, employeeDetails, department, designation, project) =>
+                {
+                    if (!employeeDictionary.TryGetValue(employee.Id, out var currentEmployee))
+                    {
+                        currentEmployee = employee;
+                        employeeDetails.Designation = designation;
+                        employeeDetails.Department = department;
+                        currentEmployee.Details = employeeDetails;
+                        currentEmployee.Projects = new List<Project>();
+                        employeeDictionary.Add(currentEmployee.Id, currentEmployee);
+                    }
+
+                    if (project != null && currentEmployee.Projects.All(p => p.Id != project.Id))
+                    {
+                        currentEmployee.Projects.Add(project);
+                    }
+
+                    return currentEmployee;
+                }, parameter, splitOn: "EmployeeId, Id, Id, Id");
+
+            return employeeDictionary.Values;
         }
     }
 }
