@@ -81,10 +81,52 @@ namespace DataServices.Services
 
         public async Task UpdateAsync(Employee employee)
         {
-            using var connection = GetConnection();
-            await connection.ExecuteAsync(
-                "Update Employee set FirstName=@FirstName, LastName=@LastName, DateOfBirth=@DateOfBirth where Id=@Id",
-                employee);
+            using (var connection = GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        var departmentId = await GetOrCreateDepartmentAsync(connection, transaction,
+                            employee.Details?.Department?.Name);
+                        var designationId = await GetOrCreateDesignationAsync(connection, transaction,
+                            employee.Details?.Designation?.Name);
+
+                        await connection.ExecuteAsync(
+                            "Update Employee set FirstName=@FirstName, LastName=@LastName, DateOfBirth=@DateOfBirth where Id=@Id",
+                            employee, transaction);
+
+                        await UpdateEmployeeDetailsAsync(connection, transaction, new
+                        {
+                            EmployeeId = employee.Id,
+                            DesignationId = designationId,
+                            DepartmentId = departmentId,
+                        });
+
+                        await DeleteEmployeeProjectsAsync(connection, transaction, employee.Id);
+                        if (employee.Projects != null && employee.Projects.Any())
+                        {
+                            foreach (var project in employee.Projects)
+                            {
+                                var projectId = await GetOrCreateProjectAsync(connection, transaction, project.Name);
+                                await CreateEmployeeProjectsAsync(connection, transaction, new
+                                {
+                                    EmployeeId = employee.Id,
+                                    ProjectId = projectId,
+                                });
+                            }
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch (Exception)
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
         }
 
         public async Task DeleteAsync(int id)
@@ -196,11 +238,28 @@ namespace DataServices.Services
             await connection.ExecuteAsync(insertEmployeeDetailSql, parameter, transaction);
         }
 
+        private async Task UpdateEmployeeDetailsAsync(SqlConnection connection, SqlTransaction transaction,
+            object parameter)
+        {
+            var updateEmployeeDetailSql = @"Update EmployeeDetails 
+                                            Set DepartmentId=@DepartmentId,
+                                            DesignationId=@DesignationId
+                                            Where EmployeeId=@EmployeeId";
+            await connection.ExecuteAsync(updateEmployeeDetailSql, parameter, transaction);
+        }
+
         private async Task CreateEmployeeProjectsAsync(SqlConnection connection, SqlTransaction transaction,
             object parameter)
         {
             var insertEmployeeProjectsSql = "Insert into EmployeeProjects (EmployeeId, ProjectId) Values(@EmployeeId, @ProjectId)";
             await connection.ExecuteAsync(insertEmployeeProjectsSql, parameter, transaction);
+        }
+
+        private async Task DeleteEmployeeProjectsAsync(SqlConnection connection, SqlTransaction transaction,
+            int employeeId)
+        {
+            var deleteSql = "Delete from EmployeeProjects where EmployeeId=@EmployeeId";
+            await connection.ExecuteAsync(deleteSql, new { EmployeeId = employeeId }, transaction);
         }
     }
 }
