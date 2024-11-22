@@ -42,12 +42,12 @@ namespace DataServices.Services
                             employee.Details?.Department?.Name);
                         var designationId = await GetOrCreateDesignationAsync(connection, transaction,
                             employee.Details?.Designation?.Name);
-                        
+
                         var insertSql =
                             @"Insert into Employee (FirstName, LastName, Code, DateOfBirth) Values(@FirstName, @LastName, @Code, @DateOfBirth);
                                 Select Cast(SCOPE_IDENTITY() as int)";
                         var newEmployeeId = await connection.QuerySingleAsync<int>(insertSql, employee, transaction);
-                        
+
                         await CreateEmployeeDetailsAsync(connection, transaction, new
                         {
                             EmployeeId = newEmployeeId,
@@ -131,8 +131,26 @@ namespace DataServices.Services
 
         public async Task DeleteAsync(int id)
         {
-            using var connection = GetConnection();
-            await connection.ExecuteAsync("Delete From Employee where Id=@Id", new { Id = id });
+            using (var connection = GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        await DeleteEmployeeProjectsAsync(connection, transaction, id);
+                        await DeleteEmployeeDetailsAsync(connection, transaction, id);
+                        await connection.ExecuteAsync("Delete From Employee where Id=@Id", new { Id = id }, transaction);
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
         }
 
         private SqlConnection GetConnection()
@@ -207,7 +225,7 @@ namespace DataServices.Services
         {
             var checkSql = "Select Id from Designation where Name=@Name";
             var existingDesignationId = await connection.QueryFirstOrDefaultAsync<int?>(checkSql, new { Name = designation }, transaction);
-            if(existingDesignationId.HasValue)
+            if (existingDesignationId.HasValue)
                 return existingDesignationId.Value;
 
             var insertSql = @"Insert into Designation (Name) Values(@Name);
@@ -246,6 +264,13 @@ namespace DataServices.Services
                                             DesignationId=@DesignationId
                                             Where EmployeeId=@EmployeeId";
             await connection.ExecuteAsync(updateEmployeeDetailSql, parameter, transaction);
+        }
+
+        private async Task DeleteEmployeeDetailsAsync(SqlConnection connection, SqlTransaction transaction,
+            int employeeId)
+        {
+            var deleteSql = "Delete from EmployeeDetails where EmployeeId=@EmployeeId";
+            await connection.ExecuteAsync(deleteSql, new { EmployeeId = employeeId }, transaction);
         }
 
         private async Task CreateEmployeeProjectsAsync(SqlConnection connection, SqlTransaction transaction,
