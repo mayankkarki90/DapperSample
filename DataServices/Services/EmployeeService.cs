@@ -31,9 +31,52 @@ namespace DataServices.Services
 
         public async Task AddAsync(Employee employee)
         {
-            using var connection = GetConnection();
-            await connection.ExecuteAsync("Insert into Employee (FirstName, LastName, Code, DateOfBirth) Values (@FirstName, @LastName, @Code, @DateOfBirth)",
-                employee);
+            using (var connection = GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        var departmentId = await GetOrCreateDepartmentAsync(connection, transaction,
+                            employee.Details?.Department?.Name);
+                        var designationId = await GetOrCreateDesignationAsync(connection, transaction,
+                            employee.Details?.Designation?.Name);
+                        
+                        var insertSql =
+                            @"Insert into Employee (FirstName, LastName, Code, DateOfBirth) Values(@FirstName, @LastName, @Code, @DateOfBirth);
+                                Select Cast(SCOPE_IDENTITY() as int)";
+                        var newEmployeeId = await connection.QuerySingleAsync<int>(insertSql, employee, transaction);
+                        
+                        await CreateEmployeeDetailsAsync(connection, transaction, new
+                        {
+                            EmployeeId = newEmployeeId,
+                            DesignationId = designationId,
+                            DepartmentId = departmentId,
+                        });
+
+                        if (employee.Projects != null && employee.Projects.Any())
+                        {
+                            foreach (var project in employee.Projects)
+                            {
+                                var projectId = await GetOrCreateProjectAsync(connection, transaction, project.Name);
+                                await CreateEmployeeProjectsAsync(connection, transaction, new
+                                {
+                                    EmployeeId = newEmployeeId,
+                                    ProjectId = projectId,
+                                });
+                            }
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch (Exception)
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
         }
 
         public async Task UpdateAsync(Employee employee)
@@ -99,6 +142,65 @@ namespace DataServices.Services
                 }, parameter, splitOn: "EmployeeId, Id, Id, Id");
 
             return employeeDictionary.Values;
+        }
+
+        private async Task<int> GetOrCreateDepartmentAsync(SqlConnection connection, SqlTransaction transaction,
+            string departmentName)
+        {
+            var checkSql = "Select Id from Department where Name=@Name";
+            int? existingDepartmentId = await connection.QueryFirstOrDefaultAsync<int?>(checkSql,
+                    new { Name = departmentName }, transaction);
+            if (existingDepartmentId.HasValue)
+                return existingDepartmentId.Value;
+
+            var insertSql = @"Insert into Department (Name) Values(@Name);
+                                Select CAST(SCOPE_IDENTITY() as int);";
+            var newDepartmentId = await connection.QuerySingleAsync<int>(insertSql,
+                new { Name = departmentName }, transaction);
+            return newDepartmentId;
+        }
+
+        private async Task<int> GetOrCreateDesignationAsync(SqlConnection connection, SqlTransaction transaction,
+            string designation)
+        {
+            var checkSql = "Select Id from Designation where Name=@Name";
+            var existingDesignationId = await connection.QueryFirstOrDefaultAsync<int?>(checkSql, new { Name = designation }, transaction);
+            if(existingDesignationId.HasValue)
+                return existingDesignationId.Value;
+
+            var insertSql = @"Insert into Designation (Name) Values(@Name);
+                                Select CAST(SCOPE_IDENTITY() as int);";
+            var newDesignationId = await connection.QuerySingleAsync<int>(insertSql, new { Name = designation }, transaction);
+            return newDesignationId;
+        }
+
+        private async Task<int> GetOrCreateProjectAsync(SqlConnection connection, SqlTransaction transaction,
+            string projectName)
+        {
+            var checkSql = "Select Id from Project where Name = @Name";
+            var existingProjectId = await connection.QueryFirstOrDefaultAsync<int?>(checkSql,
+                new { Name = projectName }, transaction);
+            if (existingProjectId.HasValue)
+                return existingProjectId.Value;
+
+            var insertSql = @"Insert into Project (Name) Values(@Name);
+                                Select Cast(SCOPE_IDENTITY() as int);";
+            var newProjectId = await connection.QuerySingleAsync<int>(insertSql, new { Name = projectName }, transaction);
+            return newProjectId;
+        }
+
+        private async Task CreateEmployeeDetailsAsync(SqlConnection connection, SqlTransaction transaction,
+            object parameter)
+        {
+            var insertEmployeeDetailSql = "Insert into EmployeeDetails (EmployeeId, DepartmentId, DesignationId) Values(@EmployeeId, @DepartmentId, @DesignationId)";
+            await connection.ExecuteAsync(insertEmployeeDetailSql, parameter, transaction);
+        }
+
+        private async Task CreateEmployeeProjectsAsync(SqlConnection connection, SqlTransaction transaction,
+            object parameter)
+        {
+            var insertEmployeeProjectsSql = "Insert into EmployeeProjects (EmployeeId, ProjectId) Values(@EmployeeId, @ProjectId)";
+            await connection.ExecuteAsync(insertEmployeeProjectsSql, parameter, transaction);
         }
     }
 }
