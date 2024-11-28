@@ -19,6 +19,10 @@ namespace DapperSample.Controllers
             _mapper = mapper;
         }
 
+        /// <summary>
+        /// Gets all employees.
+        /// </summary>
+        /// <returns></returns>
         [HttpGet]
         public async Task<ActionResult<List<EmployeeDto>>> GetAllAsync()
         {
@@ -27,6 +31,11 @@ namespace DapperSample.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// Gets the employee by code.
+        /// </summary>
+        /// <param name="code">The employee code.</param>
+        /// <returns></returns>
         [HttpGet("/code/{code}", Name = "GetByCode")]
         public async Task<ActionResult<EmployeeDto>> GetByCodeAsync(string code)
         {
@@ -40,6 +49,35 @@ namespace DapperSample.Controllers
             return Ok(response);
         }
 
+        /// <summary>Adds an employee.</summary>
+        /// <param name="employee">The employee.</param>
+        /// <returns>
+        /// </returns>
+        /// <remarks>
+        /// Sample request:
+        ///     POST
+        ///     {
+        ///        "firstName": "Mayank",
+        ///        "lastName": "Karki",
+        ///        "code": "AE$001",
+        ///        "dateOfBirth": "2024-11-28T14:32:38.960Z",
+        ///        "details": {
+        ///            "department": {
+        ///                "name": "Development"
+        ///            },
+        ///            "designation": {
+        ///                "name": "Team Lead"
+        ///            }
+        ///        },
+        ///    "projects": [
+        ///    {
+        ///        "name": "Rational Will"
+        ///    }
+        ///    ]
+        ///}
+        ///
+        /// </remarks>
+        /// <response code="201">A new employee created</response>
         [HttpPost]
         public async Task<ActionResult> AddAsync(EmployeeDto employee)
         {
@@ -48,6 +86,11 @@ namespace DapperSample.Controllers
             return CreatedAtAction("GetByCode", new { code = employee.Code }, employee);
         }
 
+        /// <summary>Updates the employee.</summary>
+        /// <param name="employee">The employee.</param>
+        /// <returns>
+        ///   <br />
+        /// </returns>
         [HttpPut]
         public async Task<ActionResult> UpdateAsync(EmployeeDto employee)
         {
@@ -62,6 +105,11 @@ namespace DapperSample.Controllers
             return NoContent();
         }
 
+        /// <summary>Deletes the employee.</summary>
+        /// <param name="code">The employee code.</param>
+        /// <returns>
+        ///   <br />
+        /// </returns>
         [HttpDelete("/code/{code}")]
         public async Task<ActionResult> DeleteAsync(string code)
         {

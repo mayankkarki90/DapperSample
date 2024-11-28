@@ -15,6 +15,10 @@ namespace DataServices.Services
             _configuration = configuration;
         }
 
+        /// <summary>
+        /// Gets all asynchronous.
+        /// </summary>
+        /// <returns></returns>
         public async Task<IEnumerable<Employee>> GetAllAsync()
         {
             var sql = GetEmployeesSql(false);
@@ -22,6 +26,11 @@ namespace DataServices.Services
             return employees;
         }
 
+        /// <summary>
+        /// Gets the by code asynchronous.
+        /// </summary>
+        /// <param name="code">The code.</param>
+        /// <returns></returns>
         public async Task<Employee> GetByCodeAsync(string code)
         {
             var sql = GetEmployeesSql(true);
@@ -29,6 +38,10 @@ namespace DataServices.Services
             return employees.FirstOrDefault();
         }
 
+        /// <summary>
+        /// Adds the employee asynchronous.
+        /// </summary>
+        /// <param name="employee">The employee.</param>
         public async Task AddAsync(Employee employee)
         {
             using (var connection = GetConnection())
@@ -79,6 +92,10 @@ namespace DataServices.Services
             }
         }
 
+        /// <summary>
+        /// Updates the employee asynchronous.
+        /// </summary>
+        /// <param name="employee">The employee.</param>
         public async Task UpdateAsync(Employee employee)
         {
             using (var connection = GetConnection())
@@ -104,6 +121,7 @@ namespace DataServices.Services
                             DepartmentId = departmentId,
                         });
 
+                        //Delete all the projects assigned to employee first, and then assigned all the projects again
                         await DeleteEmployeeProjectsAsync(connection, transaction, employee.Id);
                         if (employee.Projects != null && employee.Projects.Any())
                         {
@@ -129,6 +147,10 @@ namespace DataServices.Services
             }
         }
 
+        /// <summary>
+        /// Deletes the employee asynchronous.
+        /// </summary>
+        /// <param name="id">The identifier.</param>
         public async Task DeleteAsync(int id)
         {
             using (var connection = GetConnection())
@@ -153,11 +175,20 @@ namespace DataServices.Services
             }
         }
 
+        /// <summary>
+        /// Gets the connection.
+        /// </summary>
+        /// <returns></returns>
         private SqlConnection GetConnection()
         {
             return new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
         }
 
+        /// <summary>
+        /// Gets the employees SQL.
+        /// </summary>
+        /// <param name="getByCode">if set to <c>true</c> [get by code].</param>
+        /// <returns></returns>
         private string GetEmployeesSql(bool getByCode)
         {
             var sql = @"SELECT E.*, ED.*, D.*, DSG.*, P.*
@@ -174,6 +205,12 @@ namespace DataServices.Services
             return sql;
         }
 
+        /// <summary>
+        /// Queries the employees asynchronous.
+        /// </summary>
+        /// <param name="sql">The SQL.</param>
+        /// <param name="parameter">The parameter.</param>
+        /// <returns></returns>
         private async Task<IEnumerable<Employee>> QueryEmployeesAsync(string sql, object? parameter = null)
         {
             var employeeDictionary = new Dictionary<int, Employee>();
@@ -204,6 +241,13 @@ namespace DataServices.Services
             return employeeDictionary.Values;
         }
 
+        /// <summary>
+        /// Gets or create department asynchronous.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="departmentName">Name of the department.</param>
+        /// <returns></returns>
         private async Task<int> GetOrCreateDepartmentAsync(SqlConnection connection, SqlTransaction transaction,
             string departmentName)
         {
@@ -220,6 +264,13 @@ namespace DataServices.Services
             return newDepartmentId;
         }
 
+        /// <summary>
+        /// Gets or create designation asynchronous.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="designation">The designation.</param>
+        /// <returns></returns>
         private async Task<int> GetOrCreateDesignationAsync(SqlConnection connection, SqlTransaction transaction,
             string designation)
         {
@@ -234,6 +285,13 @@ namespace DataServices.Services
             return newDesignationId;
         }
 
+        /// <summary>
+        /// Gets or create project asynchronous.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="projectName">Name of the project.</param>
+        /// <returns></returns>
         private async Task<int> GetOrCreateProjectAsync(SqlConnection connection, SqlTransaction transaction,
             string projectName)
         {
@@ -249,6 +307,12 @@ namespace DataServices.Services
             return newProjectId;
         }
 
+        /// <summary>
+        /// Creates the employee details asynchronous.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="parameter">The parameter.</param>
         private async Task CreateEmployeeDetailsAsync(SqlConnection connection, SqlTransaction transaction,
             object parameter)
         {
@@ -256,6 +320,12 @@ namespace DataServices.Services
             await connection.ExecuteAsync(insertEmployeeDetailSql, parameter, transaction);
         }
 
+        /// <summary>
+        /// Updates the employee details asynchronous.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="parameter">The parameter.</param>
         private async Task UpdateEmployeeDetailsAsync(SqlConnection connection, SqlTransaction transaction,
             object parameter)
         {
@@ -266,6 +336,12 @@ namespace DataServices.Services
             await connection.ExecuteAsync(updateEmployeeDetailSql, parameter, transaction);
         }
 
+        /// <summary>
+        /// Deletes the employee details asynchronous.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="employeeId">The employee identifier.</param>
         private async Task DeleteEmployeeDetailsAsync(SqlConnection connection, SqlTransaction transaction,
             int employeeId)
         {
@@ -273,6 +349,12 @@ namespace DataServices.Services
             await connection.ExecuteAsync(deleteSql, new { EmployeeId = employeeId }, transaction);
         }
 
+        /// <summary>
+        /// Creates the employee projects asynchronous.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="parameter">The parameter.</param>
         private async Task CreateEmployeeProjectsAsync(SqlConnection connection, SqlTransaction transaction,
             object parameter)
         {
@@ -280,6 +362,12 @@ namespace DataServices.Services
             await connection.ExecuteAsync(insertEmployeeProjectsSql, parameter, transaction);
         }
 
+        /// <summary>
+        /// Deletes the employee projects asynchronous.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <param name="transaction">The transaction.</param>
+        /// <param name="employeeId">The employee identifier.</param>
         private async Task DeleteEmployeeProjectsAsync(SqlConnection connection, SqlTransaction transaction,
             int employeeId)
         {
