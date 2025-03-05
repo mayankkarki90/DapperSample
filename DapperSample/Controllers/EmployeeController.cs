@@ -6,13 +6,21 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DapperSample.Controllers
 {
+    /// <summary>
+    /// Api's for employee
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class EmployeeController : Controller
+    public class EmployeeController : ControllerBase
     {
         private readonly IEmployeeService _employeeService;
         private readonly IMapper _mapper;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EmployeeController"/> class.
+        /// </summary>
+        /// <param name="employeeService">The employee service.</param>
+        /// <param name="mapper">The mapper.</param>
         public EmployeeController(IEmployeeService employeeService, IMapper mapper)
         {
             _employeeService = employeeService;
@@ -36,7 +44,10 @@ namespace DapperSample.Controllers
         /// </summary>
         /// <param name="code">The employee code.</param>
         /// <returns></returns>
-        [HttpGet("/code/{code}", Name = "GetByCode")]
+        /// Swagger gen UI failed to load on using Route method and HttpGet without route.
+        /// Seems like it's necessary to provide route in HttpGet on using Name parameter
+        /// for Swagger gen to work
+        [HttpGet("code/{code}", Name = "GetByCode")]
         public async Task<ActionResult<EmployeeDto>> GetByCodeAsync(string code)
         {
             var employee = await _employeeService.GetByCodeAsync(code);
@@ -110,7 +121,7 @@ namespace DapperSample.Controllers
         /// <returns>
         ///   <br />
         /// </returns>
-        [HttpDelete("/code/{code}")]
+        [HttpDelete("code/{code}")]
         public async Task<ActionResult> DeleteAsync(string code)
         {
             var existingEmployee = await _employeeService.GetByCodeAsync(code);
