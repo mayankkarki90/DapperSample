@@ -11,6 +11,7 @@ namespace DapperSample.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Produces("application/json")]
     public class EmployeeController : ControllerBase
     {
         private readonly IEmployeeService _employeeService;
